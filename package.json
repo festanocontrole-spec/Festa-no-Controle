@@ -1,16 +1,12 @@
 {
-  "name": "festa-no-controle",
+  "name": "tucxa-festa-junina",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "fix:encoding": "powershell -ExecutionPolicy Bypass -File scripts/dev/fix-encoding.ps1",
-    "check:encoding": "powershell -ExecutionPolicy Bypass -File scripts/dev/check-encoding.ps1",
-    "verify": "npm run fix:encoding && npm run lint && npm run typecheck && npm run build"
+    "lint": "eslint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
@@ -34,6 +30,5 @@
     "supabase": "^2.98.2",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "description": "Plataforma para vender, planejar, operar e prestar contas de festas comunitárias e beneficentes."
+  }
 }

@@ -2,6 +2,16 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "==> Criando estrutura de produto Festa no Controle..." -ForegroundColor Cyan
 
+function Write-Utf8NoBom([string]$Path, [string]$Content) {
+  $dir = Split-Path $Path -Parent
+  if ($dir -and !(Test-Path $dir)) {
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  }
+
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText((Join-Path (Get-Location) $Path), $Content.TrimStart(), $utf8NoBom)
+}
+
 $dirs = @(
   "docs",
   "docs\produto",
@@ -24,7 +34,7 @@ foreach ($dir in $dirs) {
   New-Item -ItemType Directory -Force -Path $dir | Out-Null
 }
 
-@"
+Write-Utf8NoBom "docs\produto\visao-geral.md" @"
 # Festa no Controle
 
 Plataforma para vender, planejar, operar e prestar contas de festas comunitárias, beneficentes, escolares, religiosas e associativas.
@@ -43,9 +53,9 @@ Digital onde ajuda. Papel onde ainda faz sentido. Controle em todas as etapas.
 2. Pré-venda: convites, Pix, comprovantes e combos.
 3. Planejamento: compras, preparo, estoque e voluntários.
 4. Gestão completa: campanhas, indicações, autosserviço e prestação de contas.
-"@ | Set-Content "docs\produto\visao-geral.md" -Encoding UTF8
+"@
 
-@"
+Write-Utf8NoBom "docs\comercial\posicionamento.md" @"
 # Posicionamento Comercial
 
 ## Nome
@@ -86,9 +96,9 @@ O sistema entende a realidade de voluntários, papel, Pix manual, WhatsApp, caix
 - Melhor planejamento
 - Menos improviso
 - Prestação de contas mais simples
-"@ | Set-Content "docs\comercial\posicionamento.md" -Encoding UTF8
+"@
 
-@"
+Write-Utf8NoBom "docs\diagnostico\pesquisa-publica.md" @"
 # Diagnóstico Comercial
 
 Objetivo: captar leads oferecendo uma análise gratuita da maturidade da festa.
@@ -115,9 +125,9 @@ Objetivo: captar leads oferecendo uma análise gratuita da maturidade da festa.
 - Coordenação voluntária
 - Receita antecipada baixa
 - Prestação de contas difícil
-"@ | Set-Content "docs\diagnostico\pesquisa-publica.md" -Encoding UTF8
+"@
 
-@"
+Write-Utf8NoBom "docs\precificacao\modelo-comercial.md" @"
 # Precificação Inicial
 
 ## Modelo recomendado
@@ -144,12 +154,13 @@ Sugestão: R$ 1.997 a R$ 4.997 por evento.
 ## Evitar no início
 
 Cobrar percentual sobre o total geral arrecadado, inclusive dinheiro físico e vendas externas.
-"@ | Set-Content "docs\precificacao\modelo-comercial.md" -Encoding UTF8
+"@
 
-@"
+Write-Utf8NoBom "docs\roadmap\roadmap-tecnico.md" @"
 # Roadmap Técnico
 
 ## Fase 1 - Base comercial limpa
+
 - Renomear produto
 - Separar Tucxa como case
 - Criar tenant/entidade
@@ -157,12 +168,14 @@ Cobrar percentual sobre o total geral arrecadado, inclusive dinheiro físico e v
 - Criar diagnóstico público
 
 ## Fase 2 - Multi-entidade
+
 - organizations
 - organization_members
 - eventos vinculados à organização
 - permissões por papel
 
 ## Fase 3 - CRM comercial
+
 - leads
 - respostas do diagnóstico
 - status comercial
@@ -170,11 +183,13 @@ Cobrar percentual sobre o total geral arrecadado, inclusive dinheiro físico e v
 - histórico de contato
 
 ## Fase 4 - Demonstração
+
 - dados fictícios
 - evento demo
 - cardápio demo
 - pedidos demo
 - relatório demo
-"@ | Set-Content "docs\roadmap\roadmap-tecnico.md" -Encoding UTF8
+"@
 
 Write-Host "Estrutura criada com sucesso." -ForegroundColor Green
+Write-Host "Dica: rode npm run fix:encoding antes de npm run build para evitar BOM em package.json e arquivos críticos." -ForegroundColor Yellow

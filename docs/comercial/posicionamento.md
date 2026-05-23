@@ -1,4 +1,4 @@
-﻿# Posicionamento Comercial
+# Posicionamento Comercial
 
 ## Nome
 

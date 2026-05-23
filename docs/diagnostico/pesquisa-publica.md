@@ -1,4 +1,4 @@
-﻿# DiagnÃ³stico Comercial
+# DiagnÃ³stico Comercial
 
 Objetivo: captar leads oferecendo uma anÃ¡lise gratuita da maturidade da festa.
 

@@ -1,4 +1,4 @@
-﻿# PrecificaÃ§Ã£o Inicial
+# PrecificaÃ§Ã£o Inicial
 
 ## Modelo recomendado
 

@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: {
-    default: "Festa no Controle",
-    template: "%s | Festa no Controle",
-  },
-  description:
-    "Plataforma para vender, planejar, operar e prestar contas de festas comunitárias e beneficentes.",
+  title: "Arraiá do Tucxa 2026",
+  description: "Convites, combos, bingo e organização da Festa Junina do Tucxa.",
 };
 
 export default function RootLayout({

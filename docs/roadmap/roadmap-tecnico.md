@@ -1,4 +1,4 @@
-﻿# Roadmap TÃ©cnico
+# Roadmap TÃ©cnico
 
 ## Fase 1 - Base comercial limpa
 - Renomear produto

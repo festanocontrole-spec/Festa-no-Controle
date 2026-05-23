@@ -1,4 +1,4 @@
-﻿# Festa no Controle
+# Festa no Controle
 
 Plataforma para vender, planejar, operar e prestar contas de festas comunitÃ¡rias, beneficentes, escolares, religiosas e associativas.
 

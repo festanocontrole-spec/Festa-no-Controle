@@ -28,7 +28,7 @@ export default function DiagnosticPage({ searchParams }: { searchParams?: Promis
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_52%,#f7fee7_100%)]">
-      <section className="mx-auto max-w-5xl px-5 py-10">
+      <section className="mx-auto max-w-5xl px-5 pt-10 pb-14">
         <div className="mb-8 rounded-[2rem] border border-amber-200 bg-white p-6 shadow-sm md:p-8">
           <p className="inline-flex rounded-full bg-green-100 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-green-900">
             Diagnóstico gratuito
@@ -37,7 +37,7 @@ export default function DiagnosticPage({ searchParams }: { searchParams?: Promis
             Sua festa está preparada para vender mais e ter menos correria?
           </h1>
           <p className="mt-4 max-w-3xl leading-7 text-stone-700">
-            Responda algumas perguntas rápidas. O sistema vai registrar o lead no CRM comercial e sugerir a oferta mais adequada: caixa sem retrabalho, receita antecipada, planejamento ou prestação de contas.
+            Responda algumas perguntas rápidas. O Festa no Controle vai indicar um caminho inicial: caixa sem retrabalho, receita antecipada, planejamento, prestação de contas ou gestão de bingo.
           </p>
         </div>
 
@@ -47,7 +47,7 @@ export default function DiagnosticPage({ searchParams }: { searchParams?: Promis
               <h2 className="flex items-center gap-2 text-xl font-black text-green-950">
                 <ClipboardCheck className="h-5 w-5" /> Dados para contato
               </h2>
-              <p className="mt-1 text-sm text-stone-600">Esses dados ficam no CRM para follow-up consultivo.</p>
+              <p className="mt-1 text-sm text-stone-600">Usaremos esses dados para enviar o retorno do diagnóstico e sugerir o próximo passo.</p>
             </div>
 
             <label className="grid gap-2 text-sm font-bold text-stone-700">
@@ -113,12 +113,12 @@ export default function DiagnosticPage({ searchParams }: { searchParams?: Promis
 
             <label className="grid gap-2 text-sm font-bold text-stone-700 md:col-span-2">
               Principal dor hoje *
-              <textarea required name="main_pain" rows={4} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 outline-none focus:border-green-700" placeholder="Ex.: fila no caixa, voluntários, falta/sobra de comida, controle de Pix, prestação de contas..." />
+              <textarea required name="main_pain" rows={4} className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 outline-none focus:border-green-700" placeholder="Ex.: fila no caixa, voluntários, falta/sobra de comida, controle de Pix, bingo, cartelas, prestação de contas..." />
             </label>
           </section>
 
-          <BooleanQuestion name="sells_tickets_before" label="Vocês vendem convites ou reservas antes do evento?" />
-          <BooleanQuestion name="uses_paper_tickets" label="Vocês ainda dependem de fichas ou convites em papel?" />
+          <BooleanQuestion name="sells_tickets_before" label="Vocês vendem convites, reservas ou cartelas antes do evento?" />
+          <BooleanQuestion name="uses_paper_tickets" label="Vocês ainda dependem de fichas, convites ou controles em papel?" />
           <BooleanQuestion name="cashier_retypes_orders" label="O caixa precisa redigitar ou reconstruir pedidos no fechamento?" />
           <BooleanQuestion name="had_cashier_lines" label="Já houve fila grande no caixa ou no fechamento da conta?" />
           <BooleanQuestion name="had_food_shortage_or_leftovers" label="Já faltou ou sobrou muita comida/bebida por falta de previsão?" />
@@ -139,7 +139,7 @@ export default function DiagnosticPage({ searchParams }: { searchParams?: Promis
           </section>
 
           <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-full bg-green-800 px-6 py-4 text-sm font-black text-white shadow-lg transition hover:bg-green-900">
-            Enviar diagnóstico e gerar lead <Send className="h-4 w-4" />
+            Enviar diagnóstico gratuito <Send className="h-4 w-4" />
           </button>
         </form>
       </section>

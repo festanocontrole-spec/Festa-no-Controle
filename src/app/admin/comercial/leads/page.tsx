@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarClock, MessageCircle, RefreshCw } from "lucide-react";
+import { buildWhatsAppUrl } from "@/lib/commercialMessages";
 import { createSupabaseAdminClient } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +50,15 @@ function formatDate(value: string | null) {
 
 function buildWhatsAppHref(phone: string | null, name: string, organizationName: string | null, nextActionNote: string | null) {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  const normalized = digits.startsWith("55") ? digits : `55${digits}`;
-  const message = `Olá, ${name}! Aqui é do Festa no Controle. Vi o diagnóstico ${organizationName ? `da ${organizationName}` : "da sua festa"} e acredito que podemos ajudar com: ${nextActionNote ?? "uma implantação simples por ondas"}. Podemos conversar?`;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+  const message = [
+    `Olá, ${name}! Aqui é do Festa no Controle. Obrigado por preencher o diagnóstico ${organizationName ? `da ${organizationName}` : "da sua festa"}.`,
+    "",
+    `Pelo que você informou, acredito que podemos ajudar começando por: ${nextActionNote ?? "uma implantação simples por ondas"}.`,
+    "",
+    "Você consegue me dizer a data do evento e qual ponto mais preocupa a coordenação hoje?",
+  ].join("\n");
+
+  return buildWhatsAppUrl(phone, message);
 }
 
 export default async function CommercialLeadsPage() {
@@ -71,10 +77,18 @@ export default async function CommercialLeadsPage() {
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)]">
-      <section className="mx-auto max-w-6xl px-5 py-8">
+      <section className="mx-auto max-w-6xl px-5 pt-8 pb-14">
+        <div className="mb-6 rounded-[2rem] border border-amber-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">Gestão interna</p>
+          <h1 className="mt-2 text-3xl font-black text-green-950">Atendimento e oportunidades</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-700">
+            Área para acompanhar diagnósticos recebidos, priorizar retornos, abrir WhatsApp e conduzir o lead até cliente, pagamento, acesso, pós-venda e próxima edição.
+          </p>
+        </div>
+
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold text-stone-600">Leads listados</p>
+            <p className="text-sm font-bold text-stone-600">Diagnósticos listados</p>
             <p className="mt-2 text-3xl font-black text-green-950">{total}</p>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
@@ -89,17 +103,17 @@ export default async function CommercialLeadsPage() {
 
         {error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-bold text-red-800">
-            Não foi possível carregar os leads. Verifique se a migration 031 foi aplicada. Detalhe: {error.message}
+            Não foi possível carregar os diagnósticos. Verifique se as migrations comerciais foram aplicadas. Detalhe: {error.message}
           </div>
         ) : null}
 
         {leads.length === 0 && !error ? (
           <div className="rounded-[2rem] border border-amber-200 bg-white p-8 text-center shadow-sm">
             <RefreshCw className="mx-auto h-10 w-10 text-amber-700" />
-            <h1 className="mt-4 text-2xl font-black text-green-950">Nenhum lead comercial ainda.</h1>
-            <p className="mt-2 text-stone-700">Abra o diagnóstico público, envie uma resposta de teste e volte para conferir o CRM.</p>
+            <h1 className="mt-4 text-2xl font-black text-green-950">Nenhum diagnóstico recebido ainda.</h1>
+            <p className="mt-2 text-stone-700">Abra o diagnóstico público, envie uma resposta de teste e volte para conferir a Gestão.</p>
             <Link href="/diagnostico" className="mt-5 inline-flex rounded-full bg-green-800 px-5 py-3 text-sm font-black text-white hover:bg-green-900" prefetch={false}>
-              Criar primeiro lead
+              Criar primeiro diagnóstico
             </Link>
           </div>
         ) : null}
@@ -120,9 +134,7 @@ export default async function CommercialLeadsPage() {
                         Prioridade {priorityLabels[lead.priority] ?? lead.priority}
                       </span>
                     </div>
-                    <h2 className="mt-3 text-xl font-black text-green-950">
-                      {lead.organization_name ?? "Organização não informada"}
-                    </h2>
+                    <h2 className="mt-3 text-xl font-black text-green-950">{lead.organization_name ?? "Organização não informada"}</h2>
                     <p className="mt-1 text-sm font-bold text-stone-700">
                       {lead.contact_name} {lead.contact_whatsapp ? `• ${lead.contact_whatsapp}` : ""} {lead.contact_email ? `• ${lead.contact_email}` : ""}
                     </p>
@@ -130,7 +142,7 @@ export default async function CommercialLeadsPage() {
                       {lead.event_type ?? "Evento não informado"} {lead.expected_audience ? `• ${lead.expected_audience} pessoas` : ""} {lead.city ? `• ${lead.city}${lead.state ? `/${lead.state}` : ""}` : ""}
                     </p>
                     {lead.main_pain ? <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-stone-700">Dor principal: {lead.main_pain}</p> : null}
-                    {lead.internal_notes ? <p className="mt-3 text-sm leading-6 text-stone-700">{lead.internal_notes}</p> : null}
+                    {lead.internal_notes ? <p className="mt-3 whitespace-pre-line text-sm leading-6 text-stone-700">{lead.internal_notes}</p> : null}
                   </div>
 
                   <aside className="rounded-2xl border border-amber-100 bg-amber-50 p-4 lg:w-80">

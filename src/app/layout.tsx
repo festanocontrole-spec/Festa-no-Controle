@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   },
   description:
     "Plataforma para vender, planejar, operar e prestar contas de festas comunitárias e beneficentes.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
 };
 
 export default function RootLayout({

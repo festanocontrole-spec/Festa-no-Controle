@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { buildLeadEmailHtml, buildLeadWhatsAppMessage, notifyBotConversaLead } from "@/lib/commercialMessages";
+import { sendMail } from "@/lib/mail";
 import { createSupabaseAdminClient } from "@/lib/supabaseServer";
 
 function text(formData: FormData, key: string) {
@@ -31,6 +33,7 @@ function addScore(condition: boolean, points: number) {
 
 function classifyDiagnostic(input: {
   expectedAudience: number | null;
+  eventType: string | null;
   sellsTicketsBefore: boolean | null;
   usesPaperTickets: boolean | null;
   cashierRetypesOrders: boolean | null;
@@ -39,6 +42,7 @@ function classifyDiagnostic(input: {
   mainPain: string;
 }) {
   const mainPain = input.mainPain.toLowerCase();
+  const eventType = (input.eventType ?? "").toLowerCase();
 
   const maturityScore =
     addScore(Boolean(input.sellsTicketsBefore), 15) +
@@ -48,6 +52,18 @@ function classifyDiagnostic(input: {
     addScore(!input.usesPaperTickets, 10) +
     addScore((input.expectedAudience ?? 0) > 0, 5);
 
+  if (eventType.includes("bingo") || mainPain.includes("bingo") || mainPain.includes("cartela") || mainPain.includes("quina")) {
+    return {
+      maturityScore,
+      dominantProfile: "Evento com Bingo",
+      recommendedOffer: "Bingo no Controle integrado ao Festa no Controle",
+      priority: "high" as const,
+      nextActionNote: "Mostrar fluxo de rodadas, prendas, pedras sorteadas, chamada de bingo e venda de cartelas.",
+      solutionSummary:
+        "Organizar rodadas, prendas e chamadas de bingo, além de permitir venda de cartelas junto com convites e consumo do evento.",
+    };
+  }
+
   if (input.cashierRetypesOrders || input.hadCashierLines || mainPain.includes("fila") || mainPain.includes("caixa")) {
     return {
       maturityScore,
@@ -55,6 +71,8 @@ function classifyDiagnostic(input: {
       recommendedOffer: "Implantação Expressa: Caixa sem Retrabalho",
       priority: "high" as const,
       nextActionNote: "Agendar demonstração do fluxo garçom -> ficha/código -> caixa.",
+      solutionSummary:
+        "Começar pelo ponto mais dolorido: o garçom registra o pedido e o caixa fecha sem reconstruir tudo no fim da noite.",
     };
   }
 
@@ -65,6 +83,8 @@ function classifyDiagnostic(input: {
       recommendedOffer: "Diagnóstico de compras, preparo e consumo previsto",
       priority: "high" as const,
       nextActionNote: "Oferecer simulação de consumo, compras e preparo com base no público esperado.",
+      solutionSummary:
+        "Usar dados de convites, combos e consumo para reduzir compras no chute, sobras, faltas e improvisos.",
     };
   }
 
@@ -75,6 +95,8 @@ function classifyDiagnostic(input: {
       recommendedOffer: "Plano de convites, combos e campanhas por WhatsApp",
       priority: "medium" as const,
       nextActionNote: "Mostrar como antecipar receita com convites, combos e confirmação Pix.",
+      solutionSummary:
+        "Criar pré-venda organizada para melhorar caixa antes do evento e dar sinais de demanda para compras e preparo.",
     };
   }
 
@@ -85,6 +107,8 @@ function classifyDiagnostic(input: {
       recommendedOffer: "Checklist de operação e escala de voluntários",
       priority: "medium" as const,
       nextActionNote: "Enviar checklist de funções, treinamento e plano B para o dia do evento.",
+      solutionSummary:
+        "Organizar funções, orientações e pontos críticos para reduzir dependência de improviso e memória da coordenação.",
     };
   }
 
@@ -94,6 +118,8 @@ function classifyDiagnostic(input: {
     recommendedOffer: "Diagnóstico gratuito da operação da festa",
     priority: "medium" as const,
     nextActionNote: "Entender a próxima festa e sugerir implantação por ondas.",
+    solutionSummary:
+      "Mapear as principais dores e escolher uma primeira onda de implantação simples, segura e com plano B.",
   };
 }
 
@@ -102,12 +128,14 @@ export async function submitCommercialDiagnostic(formData: FormData) {
   const contactWhatsapp = text(formData, "contact_whatsapp");
   const organizationName = text(formData, "organization_name");
   const mainPain = text(formData, "main_pain");
+  const contactEmail = optionalText(formData, "contact_email");
 
   if (!contactName || !contactWhatsapp || !organizationName || !mainPain) {
     redirect("/diagnostico?erro=campos-obrigatorios");
   }
 
   const expectedAudience = intValue(formData, "expected_audience");
+  const eventType = optionalText(formData, "event_type");
   const sellsTicketsBefore = boolValue(formData, "sells_tickets_before");
   const usesPaperTickets = boolValue(formData, "uses_paper_tickets");
   const cashierRetypesOrders = boolValue(formData, "cashier_retypes_orders");
@@ -116,6 +144,7 @@ export async function submitCommercialDiagnostic(formData: FormData) {
 
   const classification = classifyDiagnostic({
     expectedAudience,
+    eventType,
     sellsTicketsBefore,
     usesPaperTickets,
     cashierRetypesOrders,
@@ -125,16 +154,23 @@ export async function submitCommercialDiagnostic(formData: FormData) {
   });
 
   const supabase = createSupabaseAdminClient();
-  const nextActionAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const nextActionAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const whatsappMessage = buildLeadWhatsAppMessage({
+    contactName,
+    organizationName,
+    dominantProfile: classification.dominantProfile,
+    recommendedOffer: classification.recommendedOffer,
+  });
 
   const leadPayload = {
     organization_name: organizationName,
     contact_name: contactName,
-    contact_email: optionalText(formData, "contact_email"),
+    contact_email: contactEmail,
     contact_whatsapp: contactWhatsapp,
     city: optionalText(formData, "city"),
     state: optionalText(formData, "state"),
-    event_type: optionalText(formData, "event_type"),
+    event_type: eventType,
     expected_audience: expectedAudience,
     next_event_date: optionalText(formData, "next_event_date"),
     main_pain: mainPain,
@@ -143,14 +179,15 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     priority: classification.priority,
     next_action_at: nextActionAt,
     next_action_note: classification.nextActionNote,
-    internal_notes: `Perfil: ${classification.dominantProfile}. Oferta sugerida: ${classification.recommendedOffer}.`,
+    internal_notes: [
+      `Perfil: ${classification.dominantProfile}.`,
+      `Oferta sugerida: ${classification.recommendedOffer}.`,
+      `Resumo de solução: ${classification.solutionSummary}`,
+      `Mensagem WhatsApp sugerida: ${whatsappMessage}`,
+    ].join("\n"),
   };
 
-  const { data: lead, error: leadError } = await supabase
-    .from("commercial_leads")
-    .insert(leadPayload)
-    .select("id")
-    .single();
+  const { data: lead, error: leadError } = await supabase.from("commercial_leads").insert(leadPayload).select("id").single();
 
   if (leadError || !lead) {
     console.error("Erro ao criar lead comercial", leadError);
@@ -161,15 +198,17 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     volunteer_management: optionalText(formData, "volunteer_management"),
     accountability_process: optionalText(formData, "accountability_process"),
     biggest_fear: optionalText(formData, "biggest_fear"),
+    solution_summary: classification.solutionSummary,
+    whatsapp_message: whatsappMessage,
   };
 
   const { error: diagnosticError } = await supabase.from("commercial_diagnostic_responses").insert({
     lead_id: lead.id,
     organization_name: organizationName,
     contact_name: contactName,
-    contact_email: optionalText(formData, "contact_email"),
+    contact_email: contactEmail,
     contact_whatsapp: contactWhatsapp,
-    event_type: optionalText(formData, "event_type"),
+    event_type: eventType,
     expected_audience: expectedAudience,
     sells_tickets_before: sellsTicketsBefore,
     uses_paper_tickets: usesPaperTickets,
@@ -190,9 +229,40 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     console.error("Erro ao criar diagnóstico comercial", diagnosticError);
   }
 
+  const html = buildLeadEmailHtml({
+    contactName,
+    organizationName,
+    dominantProfile: classification.dominantProfile,
+    recommendedOffer: classification.recommendedOffer,
+    solutionSummary: classification.solutionSummary,
+    appUrl,
+  });
+
+  const recipients = [contactEmail, "festanocontrole@gmail.com"];
+  await sendMail({
+    to: recipients,
+    subject: `Diagnóstico Festa no Controle - ${organizationName}`,
+    html,
+  }).catch((error) => {
+    console.error("Erro ao enviar e-mail de diagnóstico", error);
+  });
+
+  await notifyBotConversaLead({
+    contactName,
+    contactWhatsapp,
+    organizationName,
+    contactEmail,
+    dominantProfile: classification.dominantProfile,
+    recommendedOffer: classification.recommendedOffer,
+    nextActionNote: classification.nextActionNote,
+    whatsappMessage,
+  }).catch((error) => {
+    console.error("Erro ao notificar BotConversa", error);
+  });
+
   redirect(
     `/diagnostico/obrigado?perfil=${encodeURIComponent(classification.dominantProfile)}&oferta=${encodeURIComponent(
       classification.recommendedOffer,
-    )}`,
+    )}&resumo=${encodeURIComponent(classification.solutionSummary)}`,
   );
 }

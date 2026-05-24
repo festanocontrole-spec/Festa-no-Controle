@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 import { LogoFestaNoControle } from "./LogoFestaNoControle";
 
 type HeaderContext = {
@@ -15,6 +16,15 @@ const defaultContext: HeaderContext = {
   title: "Festa no Controle",
   description: "Venda, operação e prestação de contas para festas comunitárias.",
 };
+
+const landingAnchors = [
+  { href: "#como-ajuda", label: "Como ajuda" },
+  { href: "#diagnostico", label: "Diagnóstico" },
+  { href: "#videos", label: "Vídeos" },
+  { href: "#bingo", label: "Bingo" },
+  { href: "#cliente-fundador", label: "Cliente Fundador" },
+  { href: "#gestao", label: "Gestão" },
+];
 
 function getHeaderContext(pathname: string): HeaderContext {
   if (pathname.startsWith("/diagnostico/obrigado")) {
@@ -63,13 +73,13 @@ function getHeaderContext(pathname: string): HeaderContext {
 function navClass(active: boolean, emphasis = false) {
   if (emphasis) {
     return [
-      "rounded-full px-4 py-2 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2",
+      "inline-flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-xs font-black transition focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 sm:h-10 sm:px-5 sm:text-sm",
       active ? "bg-green-900 text-white shadow-sm" : "bg-green-800 text-white shadow-sm hover:bg-green-900",
     ].join(" ");
   }
 
   return [
-    "rounded-full px-4 py-2 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2",
+    "inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3 text-xs font-black transition focus:outline-none focus:ring-2 focus:ring-green-800 focus:ring-offset-2 sm:h-10 sm:px-4 sm:text-sm",
     active ? "bg-green-900 text-white shadow-sm" : "text-stone-700 hover:bg-white hover:text-green-950",
   ].join(" ");
 }
@@ -77,20 +87,22 @@ function navClass(active: boolean, emphasis = false) {
 export function AppHeader() {
   const pathname = usePathname() || "/";
   const context = getHeaderContext(pathname);
+  const showLandingAnchors = pathname === "/";
 
   return (
     <header className="sticky top-0 z-50 border-b-4 border-blue-700 bg-amber-50/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-amber-50/85">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-2">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:px-5">
+        <div className="min-w-0 flex-1 sm:flex-none">
           <LogoFestaNoControle />
-          <div className="hidden min-w-0 border-l border-amber-300/80 pl-4 lg:block">
-            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-amber-700">{context.eyebrow}</p>
-            <p className="truncate text-sm font-black text-green-950">{context.title}</p>
-            <p className="truncate text-xs font-medium text-stone-600">{context.description}</p>
-          </div>
         </div>
 
-        <nav className="flex shrink-0 items-center gap-1 overflow-x-auto text-sm" aria-label="Navegação principal">
+        <div className="hidden min-w-0 flex-1 border-l border-amber-300/80 pl-4 md:block">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-amber-700">{context.eyebrow}</p>
+          <p className="truncate text-sm font-black text-green-950">{context.title}</p>
+          <p className="truncate text-xs font-medium text-stone-600">{context.description}</p>
+        </div>
+
+        <nav className="hidden shrink-0 items-center gap-1 md:flex" aria-label="Navegação principal">
           <Link href="/diagnostico" className={navClass(pathname.startsWith("/diagnostico"), true)} prefetch={false}>
             Diagnóstico gratuito
           </Link>
@@ -101,7 +113,43 @@ export function AppHeader() {
             Gestão
           </Link>
         </nav>
+
+        <div className="flex shrink-0 items-center gap-2 md:hidden">
+          <Link href="/diagnostico" className={navClass(pathname.startsWith("/diagnostico"), true)} prefetch={false}>
+            Diagnóstico gratuito
+          </Link>
+          <details className="group relative">
+            <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-amber-200 bg-white text-green-950 shadow-sm [&::-webkit-details-marker]:hidden">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Abrir menu</span>
+            </summary>
+            <div className="absolute right-0 mt-2 grid min-w-56 gap-2 rounded-2xl border border-amber-200 bg-white p-3 shadow-xl">
+              <Link href="/demo-festa-junina" className="rounded-xl px-3 py-2 text-sm font-black text-stone-700 hover:bg-amber-50" prefetch={false}>
+                Demo Festa Junina
+              </Link>
+              <Link href="/gestao" className="rounded-xl px-3 py-2 text-sm font-black text-stone-700 hover:bg-amber-50" prefetch={false}>
+                Gestão
+              </Link>
+            </div>
+          </details>
+        </div>
       </div>
+
+      {showLandingAnchors ? (
+        <nav className="border-t border-amber-200/70 bg-white/80" aria-label="Tópicos da página">
+          <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-3 py-2 sm:px-5">
+            {landingAnchors.map((anchor) => (
+              <a
+                key={anchor.href}
+                href={anchor.href}
+                className="inline-flex shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-black text-green-950 shadow-sm hover:bg-amber-100"
+              >
+                {anchor.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      ) : null}
     </header>
   );
 }

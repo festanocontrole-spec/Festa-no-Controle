@@ -1,11 +1,23 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { buildEventSimulation } from "@/lib/eventSimulation";
 import { buildLeadEmailHtml, buildLeadWhatsAppMessage, notifyBotConversaLead } from "@/lib/commercialMessages";
-import { formDataToDiagnosticValues, validateDiagnosticValues } from "@/lib/diagnosticValidation";
+import { firstDiagnosticErrorMessage, formDataToDiagnosticValues, validateDiagnosticValues, type DiagnosticFieldKey } from "@/lib/diagnosticValidation";
 import { sendMail } from "@/lib/mail";
 import { createSupabaseAdminClient } from "@/lib/supabaseServer";
+
+export type DiagnosticSubmitState = {
+  ok: boolean;
+  message?: string;
+  redirectTo?: string;
+  fieldErrors?: Partial<Record<DiagnosticFieldKey, string>>;
+};
+
+const initialState: DiagnosticSubmitState = { ok: false };
+
+export async function getInitialDiagnosticSubmitState(): Promise<DiagnosticSubmitState> {
+  return initialState;
+}
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -47,6 +59,14 @@ function sevenDaysBefore(dateValue: string | null) {
   if (Number.isNaN(date.getTime())) return null;
   date.setDate(date.getDate() - 7);
   return date.toISOString();
+}
+
+function buildFieldErrors(errors: ReturnType<typeof validateDiagnosticValues>) {
+  const fieldErrors: Partial<Record<DiagnosticFieldKey, string>> = {};
+  for (const error of errors) {
+    if (!fieldErrors[error.field]) fieldErrors[error.field] = error.message;
+  }
+  return fieldErrors;
 }
 
 function classifyDiagnostic(input: {
@@ -141,17 +161,16 @@ function classifyDiagnostic(input: {
   };
 }
 
-export async function submitCommercialDiagnostic(formData: FormData) {
+export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmitState, formData: FormData): Promise<DiagnosticSubmitState> {
   const values = formDataToDiagnosticValues(formData);
   const validationErrors = validateDiagnosticValues(values);
 
   if (validationErrors.length > 0) {
-    const params = new URLSearchParams({
-      erro: "validacao",
-      campo: validationErrors[0]?.field ?? "formulario",
-      mensagem: validationErrors[0]?.message ?? "Revise o diagnóstico antes de enviar.",
-    });
-    redirect(`/diagnostico?${params.toString()}`);
+    return {
+      ok: false,
+      message: firstDiagnosticErrorMessage(validationErrors) ?? "Revise o diagnóstico antes de enviar.",
+      fieldErrors: buildFieldErrors(validationErrors),
+    };
   }
 
   const contactName = text(formData, "contact_name");
@@ -233,7 +252,11 @@ export async function submitCommercialDiagnostic(formData: FormData) {
 
   if (leadError || !lead) {
     console.error("Erro ao criar lead comercial", leadError);
-    redirect("/diagnostico?erro=banco");
+    return {
+      ok: false,
+      message:
+        "Não conseguimos gravar o diagnóstico agora. Verifique se as tabelas comerciais foram criadas no Supabase e tente novamente.",
+    };
   }
 
   const rawAnswers = {
@@ -362,5 +385,9 @@ export async function submitCommercialDiagnostic(formData: FormData) {
 
   if (simulation.bingoSuggestion) params.set("bingo", simulation.bingoSuggestion);
 
-  redirect(`/diagnostico/obrigado?${params.toString()}`);
+  return {
+    ok: true,
+    message: "Diagnóstico recebido. Vamos abrir a página de obrigado com a recomendação inicial.",
+    redirectTo: `/diagnostico/obrigado?${params.toString()}`,
+  };
 }

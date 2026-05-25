@@ -140,7 +140,11 @@ export default function DiagnosticForm() {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
             <p>{globalError}</p>
-            <p className="mt-1 font-medium text-red-700">O campo pendente foi destacado. Complete a informação e envie novamente.</p>
+            {Object.keys(errors).length > 0 ? (
+              <p className="mt-1 font-medium text-red-700">O campo pendente foi destacado. Complete a informação e envie novamente.</p>
+            ) : (
+              <p className="mt-1 font-medium text-red-700">O formulário foi validado, mas houve uma falha ao gravar. Verifique a configuração do Supabase e tente novamente.</p>
+            )}
           </div>
         </div>
       ) : null}

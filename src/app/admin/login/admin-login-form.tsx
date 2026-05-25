@@ -13,7 +13,7 @@ export function AdminLoginForm({ next }: { next: string }) {
           autoComplete="username"
           required
           className="rounded-2xl border border-amber-200 px-4 py-3 font-normal outline-none transition focus:border-green-700 focus:ring-2 focus:ring-green-100"
-          placeholder="admin@tucxa.com.br"
+          placeholder="festanocontrole@gmail.com"
         />
       </label>
 
@@ -33,7 +33,7 @@ export function AdminLoginForm({ next }: { next: string }) {
         type="submit"
         className="rounded-2xl bg-green-900 px-6 py-4 font-black text-white shadow-lg transition hover:bg-green-800"
       >
-        Entrar no admin
+        Entrar na Gestão
       </button>
 
       <div className="text-center text-sm">

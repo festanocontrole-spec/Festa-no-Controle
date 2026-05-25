@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { buildEventSimulation } from "@/lib/eventSimulation";
 import { buildLeadEmailHtml, buildLeadWhatsAppMessage, notifyBotConversaLead } from "@/lib/commercialMessages";
 import { firstDiagnosticErrorMessage, formDataToDiagnosticValues, validateDiagnosticValues, type DiagnosticFieldKey } from "@/lib/diagnosticValidation";
@@ -161,6 +162,20 @@ function classifyDiagnostic(input: {
   };
 }
 
+
+function formatSupabaseError(error: unknown) {
+  if (!error || typeof error !== "object") return "Erro desconhecido do Supabase.";
+  const candidate = error as { message?: string; code?: string; details?: string; hint?: string };
+  return [
+    candidate.message ? `Mensagem: ${candidate.message}` : null,
+    candidate.code ? `Código: ${candidate.code}` : null,
+    candidate.details ? `Detalhes: ${candidate.details}` : null,
+    candidate.hint ? `Dica: ${candidate.hint}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
 export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmitState, formData: FormData): Promise<DiagnosticSubmitState> {
   const values = formDataToDiagnosticValues(formData);
   const validationErrors = validateDiagnosticValues(values);
@@ -226,7 +241,10 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
     `Mensagem WhatsApp sugerida: ${whatsappMessage}`,
   ].join("\n");
 
+  const leadId = randomUUID();
+
   const leadPayload = {
+    id: leadId,
     organization_name: organizationName,
     contact_name: contactName,
     contact_email: contactEmail,
@@ -243,42 +261,28 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
     next_action_at: nextActionAt,
     next_action_note: classification.nextActionNote,
     internal_notes: internalNotes,
+    consent_whatsapp: consentWhatsapp,
+    consent_email: consentEmail,
+    desired_solution: classification.recommendedOffer,
   };
 
-  // Importante:
-  // Mantemos o INSERT inicial apenas com colunas da base comercial 031.
-  // Assim o diagnóstico continua funcionando mesmo quando migrations mais novas
-  // ainda não foram aplicadas no Supabase Web/Vercel.
-  const { data: lead, error: leadError } = await supabase
-    .from("commercial_leads")
-    .insert(leadPayload)
-    .select("id")
-    .single();
+  /*
+   * Importante:
+   * Geramos o UUID do lead na aplicação e fazemos INSERT sem .select().
+   * Isso evita falha quando o projeto estiver usando a chave anon como fallback e o RLS permitir INSERT,
+   * mas não permitir SELECT público dos leads.
+   */
+  const { error: leadError } = await supabase.from("commercial_leads").insert(leadPayload);
 
-  if (leadError || !lead) {
+  if (leadError) {
     console.error("Erro ao criar lead comercial", leadError);
     return {
       ok: false,
       message:
-        process.env.NODE_ENV === "development"
-          ? `Não conseguimos gravar o diagnóstico agora. Detalhe técnico: ${leadError?.message ?? "lead não retornado"}.`
-          : "Não conseguimos gravar o diagnóstico agora. Verifique se as tabelas comerciais foram criadas no Supabase e tente novamente.",
+        `Não conseguimos gravar o diagnóstico agora. Detalhe técnico: ${formatSupabaseError(leadError)}. ` +
+        "Verifique as variáveis SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SECRET_KEY na Vercel e as políticas RLS do diagnóstico público.",
     };
   }
-
-  // Campos criados em migrations mais recentes são atualizados sem bloquear o fluxo.
-  // Se a coluna ainda não existir, o erro fica só no log do servidor.
-  await supabase
-    .from("commercial_leads")
-    .update({
-      consent_whatsapp: consentWhatsapp,
-      consent_email: consentEmail,
-      desired_solution: classification.recommendedOffer,
-    })
-    .eq("id", lead.id)
-    .then(({ error }) => {
-      if (error) console.warn("Campos comerciais opcionais ainda não disponíveis em commercial_leads", error.message);
-    });
 
   const rawAnswers = {
     volunteer_management: optionalText(formData, "volunteer_management"),
@@ -290,7 +294,7 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
   };
 
   const { error: diagnosticError } = await supabase.from("commercial_diagnostic_responses").insert({
-    lead_id: lead.id,
+    lead_id: leadId,
     organization_name: organizationName,
     contact_name: contactName,
     contact_email: contactEmail,
@@ -318,21 +322,21 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
 
   const followups = [
     {
-      lead_id: lead.id,
+      lead_id: leadId,
       followup_type: "whatsapp",
       subject: "Retorno rápido do diagnóstico",
       notes: whatsappMessage,
       due_at: addMinutes(15),
     },
     {
-      lead_id: lead.id,
+      lead_id: leadId,
       followup_type: "whatsapp",
       subject: "Segundo contato após 24 horas",
       notes: "Retomar o diagnóstico, reforçar a recomendação inicial e convidar para ver a Demo Festa Junina ou Bingo no Controle.",
       due_at: addDays(1),
     },
     {
-      lead_id: lead.id,
+      lead_id: leadId,
       followup_type: "whatsapp",
       subject: "Terceiro contato após 3 dias",
       notes: "Perguntar se a coordenação quer reservar uma conversa rápida para planejar a primeira onda de implantação.",
@@ -343,7 +347,7 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
   const beforeEvent = sevenDaysBefore(nextEventDate);
   if (beforeEvent) {
     followups.push({
-      lead_id: lead.id,
+      lead_id: leadId,
       followup_type: "whatsapp",
       subject: "Contato 7 dias antes do evento",
       notes: "Reativar o lead próximo ao evento com checklist de risco, plano B e oferta do módulo essencial.",
@@ -393,7 +397,7 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
   }
 
   const params = new URLSearchParams({
-    lead: lead.id,
+    lead: leadId,
     perfil: classification.dominantProfile,
     oferta: classification.recommendedOffer,
     resumo: classification.solutionSummary,

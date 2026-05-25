@@ -13,11 +13,11 @@ function normalize(value: FormDataEntryValue | null) {
 
 function normalizeNext(value: string) {
   if (!value || !value.startsWith("/admin") || value.startsWith("//")) {
-    return "/admin/festa-junina";
+    return "/admin/comercial/leads";
   }
 
   if (value.startsWith("/admin/login") || value.startsWith("/admin/logout")) {
-    return "/admin/festa-junina";
+    return "/admin/comercial/leads";
   }
 
   return value;
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   if (profileError || !profile) {
     return redirectWithError(
       request,
-      "Usuário autenticado, mas sem permissão administrativa ativa. Verifique o cadastro em admin_profiles.",
+      "Usuário autenticado, mas sem permissão administrativa ativa. Verifique se este e-mail foi liberado em admin_profiles.",
       next,
     );
   }

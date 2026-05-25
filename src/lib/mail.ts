@@ -3,6 +3,8 @@ type MailInput = {
   subject: string;
   html: string;
   text?: string;
+  cc?: Array<string | null | undefined>;
+  bcc?: Array<string | null | undefined>;
 };
 
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -48,6 +50,8 @@ export function buildWhatsAppUrl(phone: string, message: string) {
 
 export async function sendMail(input: MailInput) {
   const recipients = input.to.filter((recipient): recipient is string => Boolean(recipient && recipient.includes("@")));
+  const ccRecipients = (input.cc ?? []).filter((recipient): recipient is string => Boolean(recipient && recipient.includes("@")));
+  const bccRecipients = (input.bcc ?? []).filter((recipient): recipient is string => Boolean(recipient && recipient.includes("@")));
 
   if (recipients.length === 0) {
     console.info("E-mail não enviado: nenhum destinatário válido.", { subject: input.subject });
@@ -57,6 +61,8 @@ export async function sendMail(input: MailInput) {
   if (!EMAIL_NOTIFICATIONS_ENABLED) {
     console.info("E-mail não enviado: EMAIL_NOTIFICATIONS_ENABLED não está true.", {
       to: recipients,
+      cc: ccRecipients,
+      bcc: bccRecipients,
       subject: input.subject,
     });
     return { sent: false, reason: "disabled" };
@@ -87,6 +93,8 @@ export async function sendMail(input: MailInput) {
   await transporter.sendMail({
     from: SMTP_FROM,
     to: recipients.join(", "),
+    cc: ccRecipients.length > 0 ? ccRecipients.join(", ") : undefined,
+    bcc: bccRecipients.length > 0 ? bccRecipients.join(", ") : undefined,
     subject: input.subject,
     html: input.html,
     text: input.text ?? stripHtml(input.html),

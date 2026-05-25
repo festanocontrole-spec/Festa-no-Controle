@@ -1,53 +1,127 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, PlayCircle } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, ClipboardList, Mail, MessageCircle, Sparkles } from "lucide-react";
 
-export default async function DiagnosticThanksPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ perfil?: string; oferta?: string; resumo?: string }>;
-}) {
-  const params = (await searchParams) ?? {};
-  const perfil = params.perfil ?? "Organização em evolução";
-  const oferta = params.oferta ?? "Diagnóstico gratuito da operação da festa";
-  const resumo = params.resumo ?? "Vamos entender seu evento e sugerir uma primeira onda simples, segura e com plano B.";
+export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{
+  perfil?: string;
+  oferta?: string;
+  resumo?: string;
+  publico?: string;
+  caixa?: string;
+  equipe?: string;
+  planejamento?: string;
+  bingo?: string;
+  followup?: string;
+}>;
+
+function value(value: string | undefined, fallback: string) {
+  return value && value.trim().length > 0 ? value : fallback;
+}
+
+export default async function DiagnosticThanksPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+
+  const perfil = value(params.perfil, "Organização em evolução");
+  const oferta = value(params.oferta, "Diagnóstico gratuito da operação da festa");
+  const resumo = value(
+    params.resumo,
+    "Mapear as principais dores e escolher uma primeira onda de implantação simples, segura e com plano B.",
+  );
+
+  const simulationItems = [
+    value(params.publico, "Público ainda não estimado."),
+    value(params.caixa, "Dimensionar caixa e conferência para reduzir fila no pico."),
+    value(params.equipe, "Organizar voluntários/prestadores por função, horário e ponto de atendimento."),
+    value(params.planejamento, "Usar dados para reduzir compra no chute, falta/sobra de comida e pressão no dia."),
+    params.bingo,
+  ].filter(Boolean) as string[];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#f7fee7_100%)] px-5 pt-10 pb-14">
-      <section className="mx-auto max-w-4xl rounded-[2rem] border border-amber-200 bg-white p-8 text-center shadow-xl">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-900">
-          <CheckCircle2 className="h-9 w-9" />
-        </span>
-        <h1 className="mt-5 text-3xl font-black text-green-950">Obrigado. Seu diagnóstico gratuito foi enviado.</h1>
-        <p className="mt-4 leading-7 text-stone-700">
-          Recebemos suas respostas e já organizamos uma primeira leitura para indicar o caminho mais seguro para sua festa.
-        </p>
-        <div className="mt-6 grid gap-3 rounded-2xl bg-amber-50 p-5 text-left">
-          <p className="text-sm font-black uppercase tracking-[0.16em] text-amber-700">Resultado inicial</p>
-          <p className="text-lg font-black text-green-950">Perfil: {perfil}</p>
-          <p className="text-stone-700">Caminho sugerido: {oferta}</p>
-          <p className="text-stone-700">{resumo}</p>
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)]">
+      <section className="mx-auto max-w-5xl px-4 pt-8 pb-14 sm:px-5 md:pt-12">
+        <div className="rounded-[2rem] border border-green-200 bg-white p-6 shadow-sm md:p-8">
+          <p className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-green-900">
+            <CheckCircle2 className="h-4 w-4" /> Diagnóstico recebido
+          </p>
+          <h1 className="mt-4 text-3xl font-black leading-tight text-green-950 md:text-5xl">
+            Obrigado. Já temos uma primeira leitura para orientar sua festa.
+          </h1>
+          <p className="mt-4 max-w-3xl leading-7 text-stone-700">
+            O diagnóstico não é uma proposta fechada. Ele aponta onde parece haver mais ganho de controle, menos correria e melhor uso do Festa no Controle ou do Bingo no Controle.
+          </p>
         </div>
 
-        <div className="mt-8 grid gap-4 text-left md:grid-cols-2">
-          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <PlayCircle className="mb-3 h-7 w-7 text-green-800" />
-            <h2 className="font-black text-green-950">Veja a Demo Festa Junina</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              A demonstração mostra como começar pelo fluxo mais simples e evoluir para convites, combos, planejamento e prestação de contas.
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <article className="rounded-[2rem] border border-amber-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">Leitura inicial</p>
+            <h2 className="mt-3 text-2xl font-black text-green-950">{perfil}</h2>
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl bg-amber-50 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700">Caminho sugerido</p>
+                <p className="mt-1 font-black text-green-950">{oferta}</p>
+              </div>
+              <div className="rounded-2xl bg-green-50 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-green-800">Por que isso ajuda</p>
+                <p className="mt-1 text-sm leading-6 text-stone-700">{resumo}</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[2rem] border border-amber-200 bg-white p-6 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-amber-700">
+              <ClipboardList className="h-4 w-4" /> Simulação inicial
             </p>
-            <Link href="/demo-festa-junina" className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-800 px-5 py-3 text-sm font-black text-white hover:bg-green-900" prefetch={false}>
+            <h2 className="mt-3 text-2xl font-black text-green-950">Premissas para começar a conversa</h2>
+            <ul className="mt-4 grid gap-3 text-sm leading-6 text-stone-700">
+              {simulationItems.map((item) => (
+                <li key={item} className="rounded-2xl bg-amber-50 p-3">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-3">
+          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+            <Mail className="h-6 w-6 text-green-800" />
+            <h2 className="mt-3 font-black text-green-950">E-mail imediato</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-700">
+              Enviamos o resumo inicial para o e-mail informado, com cópia para a equipe do Festa no Controle.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+            <MessageCircle className="h-6 w-6 text-green-800" />
+            <h2 className="mt-3 font-black text-green-950">Retorno por WhatsApp</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-700">
+              A melhor prática é retornar em até 15 minutos, enquanto o contexto do evento ainda está fresco.
+            </p>
+          </article>
+          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+            <CalendarClock className="h-6 w-6 text-green-800" />
+            <h2 className="mt-3 font-black text-green-950">Próximos contatos</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-700">
+              A Gestão fica preparada para follow-up em 24 horas, 3 dias e 7 dias antes do evento, se houver data.
+            </p>
+          </article>
+        </div>
+
+        <div className="mt-6 rounded-[2rem] border border-green-200 bg-green-950 p-6 text-white shadow-sm md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-green-100">
+                <Sparkles className="h-4 w-4" /> Próximo passo recomendado
+              </p>
+              <h2 className="mt-3 text-2xl font-black">Veja a Demo Festa Junina e compare com a realidade do seu evento.</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-green-50">
+                A demonstração mostra como começar pelo fluxo mais simples e evoluir para convites, combos, planejamento, Bingo no Controle e prestação de contas.
+              </p>
+            </div>
+            <Link href="/demo-festa-junina" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-green-950 hover:bg-green-50" prefetch={false}>
               Ver demo <ArrowRight className="h-4 w-4" />
             </Link>
-          </article>
-          <article className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-            <h2 className="font-black text-green-950">Próximo contato</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              A recomendação é que nossa equipe faça o primeiro contato em até 15 minutos, enquanto a dor e o contexto do evento ainda estão frescos.
-            </p>
-            <Link href="/diagnostico" className="mt-4 inline-flex items-center gap-2 rounded-full border border-green-200 bg-white px-5 py-3 text-sm font-black text-green-950 hover:bg-green-50" prefetch={false}>
-              Complementar diagnóstico
-            </Link>
-          </article>
+          </div>
         </div>
       </section>
     </main>

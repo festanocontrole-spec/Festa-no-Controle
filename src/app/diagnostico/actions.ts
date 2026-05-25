@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { buildEventSimulation } from "@/lib/eventSimulation";
 import { buildLeadEmailHtml, buildLeadWhatsAppMessage, notifyBotConversaLead } from "@/lib/commercialMessages";
+import { formDataToDiagnosticValues, validateDiagnosticValues } from "@/lib/diagnosticValidation";
 import { sendMail } from "@/lib/mail";
 import { createSupabaseAdminClient } from "@/lib/supabaseServer";
 
@@ -29,6 +31,22 @@ function boolValue(formData: FormData, key: string) {
 
 function addScore(condition: boolean, points: number) {
   return condition ? points : 0;
+}
+
+function addMinutes(minutes: number) {
+  return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+}
+
+function addDays(days: number) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function sevenDaysBefore(dateValue: string | null) {
+  if (!dateValue) return null;
+  const date = new Date(`${dateValue}T09:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setDate(date.getDate() - 7);
+  return date.toISOString();
 }
 
 function classifyDiagnostic(input: {
@@ -100,11 +118,11 @@ function classifyDiagnostic(input: {
     };
   }
 
-  if (mainPain.includes("volunt") || mainPain.includes("escala")) {
+  if (mainPain.includes("volunt") || mainPain.includes("prestador") || mainPain.includes("escala")) {
     return {
       maturityScore,
-      dominantProfile: "Coordenação voluntária sobrecarregada",
-      recommendedOffer: "Checklist de operação e escala de voluntários",
+      dominantProfile: "Coordenação sobrecarregada",
+      recommendedOffer: "Checklist de operação, voluntários e prestadores",
       priority: "medium" as const,
       nextActionNote: "Enviar checklist de funções, treinamento e plano B para o dia do evento.",
       solutionSummary:
@@ -124,15 +142,24 @@ function classifyDiagnostic(input: {
 }
 
 export async function submitCommercialDiagnostic(formData: FormData) {
+  const values = formDataToDiagnosticValues(formData);
+  const validationErrors = validateDiagnosticValues(values);
+
+  if (validationErrors.length > 0) {
+    const params = new URLSearchParams({
+      erro: "validacao",
+      campo: validationErrors[0]?.field ?? "formulario",
+      mensagem: validationErrors[0]?.message ?? "Revise o diagnóstico antes de enviar.",
+    });
+    redirect(`/diagnostico?${params.toString()}`);
+  }
+
   const contactName = text(formData, "contact_name");
   const contactWhatsapp = text(formData, "contact_whatsapp");
   const organizationName = text(formData, "organization_name");
   const mainPain = text(formData, "main_pain");
-  const contactEmail = optionalText(formData, "contact_email");
-
-  if (!contactName || !contactWhatsapp || !organizationName || !mainPain) {
-    redirect("/diagnostico?erro=campos-obrigatorios");
-  }
+  const contactEmail = text(formData, "contact_email");
+  const nextEventDate = optionalText(formData, "next_event_date");
 
   const expectedAudience = intValue(formData, "expected_audience");
   const eventType = optionalText(formData, "event_type");
@@ -141,6 +168,8 @@ export async function submitCommercialDiagnostic(formData: FormData) {
   const cashierRetypesOrders = boolValue(formData, "cashier_retypes_orders");
   const hadCashierLines = boolValue(formData, "had_cashier_lines");
   const hadFoodShortageOrLeftovers = boolValue(formData, "had_food_shortage_or_leftovers");
+  const consentWhatsapp = text(formData, "consent_whatsapp") === "sim";
+  const consentEmail = text(formData, "consent_email") === "sim";
 
   const classification = classifyDiagnostic({
     expectedAudience,
@@ -153,8 +182,15 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     mainPain,
   });
 
+  const simulation = buildEventSimulation({
+    expectedAudience,
+    eventType,
+    dominantProfile: classification.dominantProfile,
+    nextEventDate,
+  });
+
   const supabase = createSupabaseAdminClient();
-  const nextActionAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const nextActionAt = addMinutes(15);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const whatsappMessage = buildLeadWhatsAppMessage({
     contactName,
@@ -162,6 +198,14 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     dominantProfile: classification.dominantProfile,
     recommendedOffer: classification.recommendedOffer,
   });
+
+  const internalNotes = [
+    `Perfil: ${classification.dominantProfile}.`,
+    `Oferta sugerida: ${classification.recommendedOffer}.`,
+    `Resumo de solução: ${classification.solutionSummary}`,
+    `Simulação inicial: ${simulation.cashierSuggestion} ${simulation.waiterSuggestion} ${simulation.bingoSuggestion ?? ""}`,
+    `Mensagem WhatsApp sugerida: ${whatsappMessage}`,
+  ].join("\n");
 
   const leadPayload = {
     organization_name: organizationName,
@@ -172,19 +216,17 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     state: optionalText(formData, "state"),
     event_type: eventType,
     expected_audience: expectedAudience,
-    next_event_date: optionalText(formData, "next_event_date"),
+    next_event_date: nextEventDate,
     main_pain: mainPain,
     lead_source: "diagnostico-publico",
     status: "new",
     priority: classification.priority,
     next_action_at: nextActionAt,
     next_action_note: classification.nextActionNote,
-    internal_notes: [
-      `Perfil: ${classification.dominantProfile}.`,
-      `Oferta sugerida: ${classification.recommendedOffer}.`,
-      `Resumo de solução: ${classification.solutionSummary}`,
-      `Mensagem WhatsApp sugerida: ${whatsappMessage}`,
-    ].join("\n"),
+    internal_notes: internalNotes,
+    consent_whatsapp: consentWhatsapp,
+    consent_email: consentEmail,
+    desired_solution: classification.recommendedOffer,
   };
 
   const { data: lead, error: leadError } = await supabase.from("commercial_leads").insert(leadPayload).select("id").single();
@@ -200,6 +242,7 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     biggest_fear: optionalText(formData, "biggest_fear"),
     solution_summary: classification.solutionSummary,
     whatsapp_message: whatsappMessage,
+    simulation,
   };
 
   const { error: diagnosticError } = await supabase.from("commercial_diagnostic_responses").insert({
@@ -218,7 +261,7 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     volunteer_management: optionalText(formData, "volunteer_management"),
     accountability_process: optionalText(formData, "accountability_process"),
     biggest_fear: optionalText(formData, "biggest_fear"),
-    next_event_date: optionalText(formData, "next_event_date"),
+    next_event_date: nextEventDate,
     maturity_score: classification.maturityScore,
     dominant_profile: classification.dominantProfile,
     recommended_offer: classification.recommendedOffer,
@@ -229,6 +272,46 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     console.error("Erro ao criar diagnóstico comercial", diagnosticError);
   }
 
+  const followups = [
+    {
+      lead_id: lead.id,
+      followup_type: "whatsapp",
+      subject: "Retorno rápido do diagnóstico",
+      notes: whatsappMessage,
+      due_at: addMinutes(15),
+    },
+    {
+      lead_id: lead.id,
+      followup_type: "whatsapp",
+      subject: "Segundo contato após 24 horas",
+      notes: "Retomar o diagnóstico, reforçar a recomendação inicial e convidar para ver a Demo Festa Junina ou Bingo no Controle.",
+      due_at: addDays(1),
+    },
+    {
+      lead_id: lead.id,
+      followup_type: "whatsapp",
+      subject: "Terceiro contato após 3 dias",
+      notes: "Perguntar se a coordenação quer reservar uma conversa rápida para planejar a primeira onda de implantação.",
+      due_at: addDays(3),
+    },
+  ];
+
+  const beforeEvent = sevenDaysBefore(nextEventDate);
+  if (beforeEvent) {
+    followups.push({
+      lead_id: lead.id,
+      followup_type: "whatsapp",
+      subject: "Contato 7 dias antes do evento",
+      notes: "Reativar o lead próximo ao evento com checklist de risco, plano B e oferta do módulo essencial.",
+      due_at: beforeEvent,
+    });
+  }
+
+  const { error: followupError } = await supabase.from("commercial_followups").insert(followups);
+  if (followupError) {
+    console.error("Erro ao criar follow-ups comerciais", followupError);
+  }
+
   const html = buildLeadEmailHtml({
     contactName,
     organizationName,
@@ -236,33 +319,48 @@ export async function submitCommercialDiagnostic(formData: FormData) {
     recommendedOffer: classification.recommendedOffer,
     solutionSummary: classification.solutionSummary,
     appUrl,
+    simulation,
   });
 
-  const recipients = [contactEmail, "festanocontrole@gmail.com"];
-  await sendMail({
-    to: recipients,
-    subject: `Diagnóstico Festa no Controle - ${organizationName}`,
-    html,
-  }).catch((error) => {
-    console.error("Erro ao enviar e-mail de diagnóstico", error);
+  if (consentEmail) {
+    await sendMail({
+      to: [contactEmail],
+      cc: ["festanocontrole@gmail.com"],
+      subject: `Diagnóstico Festa no Controle - ${organizationName}`,
+      html,
+    }).catch((error) => {
+      console.error("Erro ao enviar e-mail de diagnóstico", error);
+    });
+  }
+
+  if (consentWhatsapp) {
+    await notifyBotConversaLead({
+      contactName,
+      contactWhatsapp,
+      organizationName,
+      contactEmail,
+      dominantProfile: classification.dominantProfile,
+      recommendedOffer: classification.recommendedOffer,
+      nextActionNote: classification.nextActionNote,
+      whatsappMessage,
+    }).catch((error) => {
+      console.error("Erro ao notificar BotConversa", error);
+    });
+  }
+
+  const params = new URLSearchParams({
+    lead: lead.id,
+    perfil: classification.dominantProfile,
+    oferta: classification.recommendedOffer,
+    resumo: classification.solutionSummary,
+    publico: simulation.audienceLabel,
+    caixa: simulation.cashierSuggestion,
+    equipe: simulation.waiterSuggestion,
+    planejamento: simulation.planningSuggestion,
+    followup: simulation.followupSuggestion,
   });
 
-  await notifyBotConversaLead({
-    contactName,
-    contactWhatsapp,
-    organizationName,
-    contactEmail,
-    dominantProfile: classification.dominantProfile,
-    recommendedOffer: classification.recommendedOffer,
-    nextActionNote: classification.nextActionNote,
-    whatsappMessage,
-  }).catch((error) => {
-    console.error("Erro ao notificar BotConversa", error);
-  });
+  if (simulation.bingoSuggestion) params.set("bingo", simulation.bingoSuggestion);
 
-  redirect(
-    `/diagnostico/obrigado?perfil=${encodeURIComponent(classification.dominantProfile)}&oferta=${encodeURIComponent(
-      classification.recommendedOffer,
-    )}&resumo=${encodeURIComponent(classification.solutionSummary)}`,
-  );
+  redirect(`/diagnostico/obrigado?${params.toString()}`);
 }

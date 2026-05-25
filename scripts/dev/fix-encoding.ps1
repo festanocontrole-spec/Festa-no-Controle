@@ -1,17 +1,25 @@
 $ErrorActionPreference = "Stop"
 
-$extensions = @("*.json", "*.ts", "*.tsx", "*.css", "*.mjs", "*.md", "*.sql", "*.ps1", "*.env.example")
-$excludedDirs = @("node_modules", ".next", ".git")
+Write-Host "==> Corrigindo encoding UTF-8 sem BOM em arquivos críticos..." -ForegroundColor Cyan
+
+$extensions = @("*.json", "*.ts", "*.tsx", "*.js", "*.mjs", "*.css", "*.md", "*.sql", "*.ps1")
+$paths = @("package.json", "src", "supabase", "docs", "scripts")
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-foreach ($extension in $extensions) {
-  Get-ChildItem -Path . -Recurse -File -Filter $extension | Where-Object {
-    $path = $_.FullName
-    -not ($excludedDirs | Where-Object { $path -like "*\$_\*" })
-  } | ForEach-Object {
-    $content = [System.IO.File]::ReadAllText($_.FullName)
-    [System.IO.File]::WriteAllText($_.FullName, $content, $utf8NoBom)
+foreach ($path in $paths) {
+  if (!(Test-Path $path)) { continue }
+
+  if ((Get-Item $path).PSIsContainer) {
+    foreach ($extension in $extensions) {
+      Get-ChildItem $path -Recurse -File -Filter $extension | ForEach-Object {
+        $content = [System.IO.File]::ReadAllText($_.FullName)
+        [System.IO.File]::WriteAllText($_.FullName, $content, $utf8NoBom)
+      }
+    }
+  } else {
+    $content = [System.IO.File]::ReadAllText((Resolve-Path $path))
+    [System.IO.File]::WriteAllText((Resolve-Path $path), $content, $utf8NoBom)
   }
 }
 
-Write-Host "Arquivos regravados em UTF-8 sem BOM." -ForegroundColor Green
+Write-Host "Encoding corrigido." -ForegroundColor Green

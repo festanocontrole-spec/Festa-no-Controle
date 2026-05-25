@@ -56,10 +56,21 @@ function addDays(days: number) {
 
 function sevenDaysBefore(dateValue: string | null) {
   if (!dateValue) return null;
-  const date = new Date(`${dateValue}T09:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setDate(date.getDate() - 7);
-  return date.toISOString();
+
+  const eventDate = new Date(`${dateValue}T09:00:00`);
+  if (Number.isNaN(eventDate.getTime())) return null;
+
+  const dueDate = new Date(eventDate);
+  dueDate.setDate(dueDate.getDate() - 7);
+
+  const now = new Date();
+
+  // Não faz sentido criar follow-up “7 dias antes” se a data já passou
+  // ou se cair no passado/mesmo momento em que o diagnóstico foi enviado.
+  if (eventDate.getTime() <= now.getTime()) return null;
+  if (dueDate.getTime() <= now.getTime()) return null;
+
+  return dueDate.toISOString();
 }
 
 function buildFieldErrors(errors: ReturnType<typeof validateDiagnosticValues>) {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarClock, CheckCircle2, MessageCircle, RefreshCw } from "lucide-react";
 import { buildPreEventFollowupMessage, buildSecondFollowupMessage, buildThirdFollowupMessage, buildWhatsAppUrl } from "@/lib/commercialMessages";
+import { CommercialAdminHero, CommercialAdminNav } from "@/components/CommercialAdminNav";
 import { createSupabaseAdminClient } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +68,31 @@ const priorityLabels: Record<string, string> = {
 
 function formatDate(value: string | null) {
   if (!value) return "Sem data";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: value.includes("T") ? "short" : undefined }).format(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Sem data";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: value.includes("T") ? "short" : undefined }).format(date);
+}
+
+function isPastDate(value: string | null) {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
+}
+
+function shouldShowFollowup(followup: FollowupViewItem) {
+  const subject = (followup.subject ?? "").toLowerCase();
+  if (subject.includes("7 dias") && isPastDate(followup.due_at)) return false;
+  return true;
+}
+
+function sevenDaysBeforeIfFuture(dateValue: string | null) {
+  if (!dateValue) return null;
+  const eventDate = new Date(`${dateValue}T09:00:00`);
+  if (Number.isNaN(eventDate.getTime()) || eventDate.getTime() <= Date.now()) return null;
+  const dueDate = new Date(eventDate);
+  dueDate.setDate(dueDate.getDate() - 7);
+  if (dueDate.getTime() <= Date.now()) return null;
+  return dueDate.toISOString();
 }
 
 function buildWhatsAppHref(phone: string | null, message: string) {
@@ -86,7 +111,7 @@ function fallbackFirstMessage(lead: CommercialLead) {
 }
 
 function getFallbackFollowups(lead: CommercialLead): FollowupViewItem[] {
-  return [
+  const items: FollowupViewItem[] = [
     {
       subject: "Retorno em até 15 minutos",
       notes: fallbackFirstMessage(lead),
@@ -105,13 +130,19 @@ function getFallbackFollowups(lead: CommercialLead): FollowupViewItem[] {
       due_at: null,
       completed_at: null,
     },
-    {
+  ];
+
+  const preEventDueAt = sevenDaysBeforeIfFuture(lead.next_event_date);
+  if (preEventDueAt) {
+    items.push({
       subject: "7 dias antes do evento",
       notes: buildPreEventFollowupMessage({ contactName: lead.contact_name }),
-      due_at: lead.next_event_date ? `${lead.next_event_date}T09:00:00` : null,
+      due_at: preEventDueAt,
       completed_at: null,
-    },
-  ];
+    });
+  }
+
+  return items;
 }
 
 export default async function CommercialLeadsPage() {
@@ -147,13 +178,13 @@ export default async function CommercialLeadsPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)]">
       <section className="mx-auto max-w-6xl px-4 pt-6 pb-14 sm:px-5 md:pt-8">
-        <div className="mb-6 rounded-[2rem] border border-amber-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-700">Gestão interna</p>
-          <h1 className="mt-2 text-3xl font-black text-green-950">Atendimento e oportunidades</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-700">
-            Área para acompanhar diagnósticos recebidos, priorizar retornos, abrir WhatsApp e conduzir o lead até cliente, pagamento, acesso, pós-venda e próxima edição.
-          </p>
-        </div>
+        <CommercialAdminHero
+          eyebrow="Gestão interna"
+          title="Leads e diagnósticos"
+          description="Área para acompanhar diagnósticos recebidos, priorizar retornos, abrir WhatsApp e conduzir o lead até cliente, pagamento, acesso, pós-venda e próxima edição."
+        />
+
+        <CommercialAdminNav currentHref="/admin/comercial/leads" />
 
         <div className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
@@ -189,7 +220,7 @@ export default async function CommercialLeadsPage() {
 
         <div className="grid gap-4">
           {leads.map((lead) => {
-            const followups: FollowupViewItem[] = followupsByLead.get(lead.id) ?? getFallbackFollowups(lead);
+            const followups: FollowupViewItem[] = (followupsByLead.get(lead.id) ?? getFallbackFollowups(lead)).filter(shouldShowFollowup);
             const firstMessage = followups[0]?.notes ?? fallbackFirstMessage(lead);
             const whatsappHref = buildWhatsAppHref(lead.contact_whatsapp, firstMessage);
 

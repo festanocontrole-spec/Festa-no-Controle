@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, CheckCircle2, ClipboardList, Mail, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardList, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -83,28 +83,12 @@ export default async function DiagnosticThanksPage({ searchParams }: { searchPar
           </article>
         </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-3">
-          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <Mail className="h-6 w-6 text-green-800" />
-            <h2 className="mt-3 font-black text-green-950">E-mail imediato</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              Enviamos o resumo inicial para o e-mail informado, com cópia para a equipe do Festa no Controle.
-            </p>
-          </article>
-          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <MessageCircle className="h-6 w-6 text-green-800" />
-            <h2 className="mt-3 font-black text-green-950">Retorno por WhatsApp</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              A melhor prática é retornar em até 15 minutos, enquanto o contexto do evento ainda está fresco.
-            </p>
-          </article>
-          <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-            <CalendarClock className="h-6 w-6 text-green-800" />
-            <h2 className="mt-3 font-black text-green-950">Próximos contatos</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              A Gestão fica preparada para follow-up em 24 horas, 3 dias e 7 dias antes do evento, se houver data.
-            </p>
-          </article>
+        <div className="mt-6 rounded-[2rem] border border-green-200 bg-green-50 p-6 shadow-sm md:p-8">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-green-800">O que acontece agora</p>
+          <h2 className="mt-2 text-2xl font-black text-green-950">Em breve alguém do Festa no Controle entrará em contato.</h2>
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-stone-700">
+            Vamos analisar suas respostas e sugerir o caminho mais simples para reduzir correria, fila, retrabalho, dúvidas no bingo ou dificuldades de prestação de contas. Enquanto isso, o próximo passo recomendado é ver a Demo Festa Junina.
+          </p>
         </div>
 
         <div className="mt-6 rounded-[2rem] border border-green-200 bg-green-950 p-6 text-white shadow-sm md:p-8">

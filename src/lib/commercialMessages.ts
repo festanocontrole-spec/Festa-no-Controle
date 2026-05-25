@@ -1,3 +1,5 @@
+import type { EventSimulation } from "@/lib/eventSimulation";
+
 export type DiagnosticClassification = {
   maturityScore: number;
   dominantProfile: string;
@@ -25,9 +27,37 @@ export function buildLeadWhatsAppMessage(input: {
     `Pelo que você informou, a primeira leitura aponta para: ${input.dominantProfile}.`,
     `O caminho mais seguro parece ser: ${input.recommendedOffer}.`,
     "",
-    "A ideia não é vender um sistema genérico, mas entender onde sua festa pode ganhar mais controle, reduzir correria e começar pelo que mais dói.",
+    "A ideia é começar pelo ponto que mais reduz correria, erro e retrabalho no seu evento — sem pedir senha, cartão ou instalação.",
     "",
-    "Você consegue me dizer em qual data será o evento e qual é hoje a maior preocupação da coordenação?",
+    "Você consegue me confirmar a data do evento e qual ponto mais preocupa a coordenação hoje?",
+  ].join("\n");
+}
+
+export function buildSecondFollowupMessage(input: { contactName: string; recommendedOffer: string }) {
+  return [
+    `Olá, ${input.contactName}! Passando para saber se você conseguiu ver o retorno do diagnóstico gratuito do Festa no Controle.`,
+    "",
+    `Pelo cenário informado, o primeiro caminho sugerido foi: ${input.recommendedOffer}.`,
+    "",
+    "Posso te mandar um resumo simples de como seria a primeira onda de implantação no seu evento?",
+  ].join("\n");
+}
+
+export function buildThirdFollowupMessage(input: { contactName: string }) {
+  return [
+    `Olá, ${input.contactName}! Só retomando o diagnóstico da sua festa.`,
+    "",
+    "Quando a coordenação organiza pedidos, caixa, voluntários/prestadores, bingo e prestação de contas antes do evento, o dia tende a ficar bem menos improvisado.",
+    "",
+    "Faz sentido marcarmos uma conversa rápida para entender se o módulo essencial já resolveria a dor principal?",
+  ].join("\n");
+}
+
+export function buildPreEventFollowupMessage(input: { contactName: string }) {
+  return [
+    `Olá, ${input.contactName}! Como o evento está se aproximando, vale revisar os principais riscos: caixa, pedidos, filas, voluntários/prestadores, pagamentos, bingo e prestação de contas.`,
+    "",
+    "Quer que eu te envie um checklist rápido para reduzir correria no dia?",
   ].join("\n");
 }
 
@@ -38,9 +68,25 @@ export function buildLeadEmailHtml(input: {
   recommendedOffer: string;
   solutionSummary: string;
   appUrl: string;
+  simulation?: EventSimulation;
 }) {
   const diagnosticUrl = `${input.appUrl}/diagnostico`;
   const demoUrl = `${input.appUrl}/demo-festa-junina`;
+
+  const simulationHtml = input.simulation
+    ? `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;padding:16px;margin:16px 0;">
+        <p style="margin:0 0 8px 0;"><strong>Simulação inicial com premissas:</strong></p>
+        <ul style="margin:0;padding-left:20px;">
+          <li>Público considerado: ${input.simulation.audienceLabel}.</li>
+          <li>${input.simulation.cashierSuggestion}</li>
+          <li>${input.simulation.waiterSuggestion}</li>
+          <li>${input.simulation.planningSuggestion}</li>
+          ${input.simulation.bingoSuggestion ? `<li>${input.simulation.bingoSuggestion}</li>` : ""}
+        </ul>
+      </div>
+    `
+    : "";
 
   return `
     <div style="font-family: Arial, sans-serif; color: #1c1917; line-height: 1.6;">
@@ -52,7 +98,8 @@ export function buildLeadEmailHtml(input: {
         <p style="margin:0 0 8px 0;"><strong>Caminho sugerido:</strong> ${input.recommendedOffer}</p>
         <p style="margin:0;"><strong>Como isso ajuda:</strong> ${input.solutionSummary}</p>
       </div>
-      <p>Se ainda não viu, recomendamos assistir a Demo Festa Junina para visualizar como a operação pode começar simples e evoluir por ondas.</p>
+      ${simulationHtml}
+      <p>Se ainda não viu, recomendamos assistir à Demo Festa Junina para visualizar como a operação pode começar simples e evoluir por ondas.</p>
       <p><a href="${demoUrl}" style="display:inline-block;background:#166534;color:white;padding:12px 18px;border-radius:999px;text-decoration:none;font-weight:bold;">Ver Demo Festa Junina</a></p>
       <p>Também é possível refazer ou complementar o diagnóstico gratuito quando quiser:</p>
       <p><a href="${diagnosticUrl}">${diagnosticUrl}</a></p>

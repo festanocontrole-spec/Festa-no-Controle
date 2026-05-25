@@ -1,12 +1,16 @@
 {
-  "name": "tucxa-festa-junina",
+  "name": "festa-no-controle",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "fix:encoding": "powershell -ExecutionPolicy Bypass -File scripts/dev/fix-encoding.ps1",
+    "check:encoding": "powershell -ExecutionPolicy Bypass -File scripts/dev/check-encoding.ps1",
+    "verify": "npm run fix:encoding && npm run check:encoding && npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

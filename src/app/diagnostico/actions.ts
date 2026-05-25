@@ -243,21 +243,42 @@ export async function submitCommercialDiagnostic(_previousState: DiagnosticSubmi
     next_action_at: nextActionAt,
     next_action_note: classification.nextActionNote,
     internal_notes: internalNotes,
-    consent_whatsapp: consentWhatsapp,
-    consent_email: consentEmail,
-    desired_solution: classification.recommendedOffer,
   };
 
-  const { data: lead, error: leadError } = await supabase.from("commercial_leads").insert(leadPayload).select("id").single();
+  // Importante:
+  // Mantemos o INSERT inicial apenas com colunas da base comercial 031.
+  // Assim o diagnóstico continua funcionando mesmo quando migrations mais novas
+  // ainda não foram aplicadas no Supabase Web/Vercel.
+  const { data: lead, error: leadError } = await supabase
+    .from("commercial_leads")
+    .insert(leadPayload)
+    .select("id")
+    .single();
 
   if (leadError || !lead) {
     console.error("Erro ao criar lead comercial", leadError);
     return {
       ok: false,
       message:
-        "Não conseguimos gravar o diagnóstico agora. Verifique se as tabelas comerciais foram criadas no Supabase e tente novamente.",
+        process.env.NODE_ENV === "development"
+          ? `Não conseguimos gravar o diagnóstico agora. Detalhe técnico: ${leadError?.message ?? "lead não retornado"}.`
+          : "Não conseguimos gravar o diagnóstico agora. Verifique se as tabelas comerciais foram criadas no Supabase e tente novamente.",
     };
   }
+
+  // Campos criados em migrations mais recentes são atualizados sem bloquear o fluxo.
+  // Se a coluna ainda não existir, o erro fica só no log do servidor.
+  await supabase
+    .from("commercial_leads")
+    .update({
+      consent_whatsapp: consentWhatsapp,
+      consent_email: consentEmail,
+      desired_solution: classification.recommendedOffer,
+    })
+    .eq("id", lead.id)
+    .then(({ error }) => {
+      if (error) console.warn("Campos comerciais opcionais ainda não disponíveis em commercial_leads", error.message);
+    });
 
   const rawAnswers = {
     volunteer_management: optionalText(formData, "volunteer_management"),

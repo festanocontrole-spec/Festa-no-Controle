@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Info, Send } from "lucide-react";
 import { firstDiagnosticErrorMessage, validateDiagnosticValues, type DiagnosticFieldKey } from "@/lib/diagnosticValidation";
-import { submitCommercialDiagnostic } from "./actions";
+import { submitCommercialDiagnostic, type DiagnosticSubmitState } from "./actions";
 
 const booleanOptions = [
   { value: "sim", label: "Sim" },
@@ -74,12 +75,30 @@ function BooleanQuestion({ name, label, error }: { name: DiagnosticFieldKey; lab
 }
 
 export default function DiagnosticForm() {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [serverState, formAction, isPending] = useActionState(submitCommercialDiagnostic, { ok: false } satisfies DiagnosticSubmitState);
   const [errors, setErrors] = useState<ErrorMap>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [state, setState] = useState("SP");
 
   const cityOptions = useMemo(() => citiesByState[state.toUpperCase()] ?? [], [state]);
+
+  useEffect(() => {
+    if (serverState.ok && serverState.redirectTo) {
+      router.push(serverState.redirectTo);
+      return;
+    }
+
+    if (!serverState.ok && serverState.message) {
+      const nextErrors = serverState.fieldErrors ?? {};
+      setErrors(nextErrors);
+      setGlobalError(serverState.message);
+      if (Object.keys(nextErrors).length > 0) {
+        window.setTimeout(() => focusFirstError(nextErrors), 100);
+      }
+    }
+  }, [router, serverState]);
 
   function focusFirstError(nextErrors: ErrorMap) {
     const firstField = Object.keys(nextErrors)[0];
@@ -115,7 +134,7 @@ export default function DiagnosticForm() {
   }
 
   return (
-    <form ref={formRef} action={submitCommercialDiagnostic} onSubmit={handleSubmit} className="grid gap-5" noValidate>
+    <form ref={formRef} action={formAction} onSubmit={handleSubmit} className="grid gap-5" noValidate>
       {globalError ? (
         <div className="sticky top-28 z-20 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 shadow-lg" role="alert">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -272,8 +291,8 @@ export default function DiagnosticForm() {
         </label>
       </section>
 
-      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-full bg-green-800 px-6 py-4 text-sm font-black text-white shadow-lg transition hover:bg-green-900">
-        Enviar diagnóstico gratuito <Send className="h-4 w-4" />
+      <button type="submit" disabled={isPending} className="inline-flex items-center justify-center gap-2 rounded-full bg-green-800 px-6 py-4 text-sm font-black text-white shadow-lg transition hover:bg-green-900 disabled:cursor-not-allowed disabled:opacity-70">
+        {isPending ? "Enviando diagnóstico..." : "Enviar diagnóstico gratuito"} <Send className="h-4 w-4" />
       </button>
     </form>
   );

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)] lg:pl-72">
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-5 md:py-8">
         <CommercialAdminHero eyebrow="Gestão interna" title="Planos e ofertas" description="Catálogo de planos, módulos, valores e estratégias de primeira oferta." />
         <CommercialAdminNav currentHref="/admin/comercial/planos" />

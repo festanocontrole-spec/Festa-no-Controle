@@ -176,7 +176,7 @@ export default async function CommercialLeadsPage() {
   const highPriority = leads.filter((lead) => ["high", "urgent"].includes(lead.priority)).length;
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fffbeb_0%,#fff7ed_55%,#f7fee7_100%)] lg:pl-72">
       <section className="mx-auto max-w-6xl px-4 pt-6 pb-14 sm:px-5 md:pt-8">
         <CommercialAdminHero
           eyebrow="Gestão interna"
